@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { localSpotService } from "$lib/services/localspot-service";
   import type { LocalSpot, Category } from "$lib/types/localspot-types";
+  import SpotChart from "$lib/components/SpotChart.svelte";
 
   // --- State Variables ---
   let title = $state("");

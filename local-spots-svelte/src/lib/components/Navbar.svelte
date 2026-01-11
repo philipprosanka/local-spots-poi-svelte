@@ -38,6 +38,7 @@
       {#if auth.isAuthenticated}
         <a class="navbar-item {isActive('/dashboard')}" href="/dashboard">Dashboard</a>
         <a class="navbar-item {isActive('/about')}" href="/about">About</a>
+        <a class="navbar-item {isActive('/charts')}" href="/charts">Charts</a>
         
         {#if auth.isAdmin}
           <a class="navbar-item {isActive('/admin')}" href="/admin">Admin Panel</a>
