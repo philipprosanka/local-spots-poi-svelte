@@ -2,6 +2,12 @@
   import { auth } from "$lib/runes.svelte";
   import { page } from "$app/stores"; 
   import { goto } from "$app/navigation";
+  import type { Category } from "$lib/types/localspot-types";
+  import { onMount } from "svelte";
+  import { localSpotService } from "$lib/services/localspot-service";
+  import { userState } from "$lib/runes.svelte";
+
+  let categories = $state<Category[]>([]);
   
   let isOpen = $state(false);
 
@@ -10,10 +16,12 @@
   }
 
   function logout() {
-    auth.logout();
-    isOpen = false;
-    goto("/"); 
-  }
+  auth.isAuthenticated = false;
+  // Clear the private data immediately!
+  userState.spots = [];
+  userState.categories = [];
+  goto("/login");
+}
 
   function isActive(path: string): string {
     return $page.url.pathname === path ? 'is-active' : '';
@@ -21,50 +29,65 @@
 </script>
 
 <nav class="navbar is-coffee" aria-label="main navigation">
-  <div class="navbar-brand">
-    <a class="navbar-item title is-4 mb-0 mr-4" href="/" style="color: #8B4513;">
-      <i class="fas fa-map-marked-alt mr-2"></i> Local Spots
-    </a>
+  <div class="container">
+   <div class="navbar-brand">
+  <a 
+    class="navbar-item title is-4 coffee-text mb-0" 
+    href={auth.isAuthenticated ? "/dashboard" : "/"}
+    style={!auth.isAuthenticated ? "cursor: default;" : ""}
+  >
+    <i class="fas fa-mug-hot mr-2"></i> Local Spots
+  </a>
+</div>
 
-    <a role="button" class="navbar-burger {isOpen ? 'is-active' : ''}" aria-label="menu" aria-expanded="false" onclick={toggleMenu}>
-      <span aria-hidden="true"></span>
-      <span aria-hidden="true"></span>
-      <span aria-hidden="true"></span>
-    </a>
-  </div>
-
-  <div class="navbar-menu {isOpen ? 'is-active' : ''}">
-    <div class="navbar-start">
-      {#if auth.isAuthenticated}
-        <a class="navbar-item {isActive('/dashboard')}" href="/dashboard">Dashboard</a>
-        <a class="navbar-item {isActive('/about')}" href="/about">About</a>
-        <a class="navbar-item {isActive('/charts')}" href="/charts">Charts</a>
-        
-        {#if auth.isAdmin}
-          <a class="navbar-item {isActive('/admin')}" href="/admin">Admin Panel</a>
-        {/if}
-      {/if}
-    </div>
-
-    <div class="navbar-end">
-      <div class="navbar-item">
+    <div class="navbar-menu is-active">
+      <div class="navbar-start">
         {#if auth.isAuthenticated}
-          <button class="button is-light is-small" onclick={logout}>
-            <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
-            <span>Logout ({auth.user?.email})</span>
-          </button>
-        {:else}
-          <div class="buttons">
-            <a href="/login" class="button is-primary is-small">Log in</a>
-            <a href="/signup" class="button is-light is-small">Sign up</a>
-          </div>
+          <a class="navbar-item {isActive('/dashboard')}" href="/dashboard">Dashboard</a>
+          <a class="navbar-item {isActive('/map')}" href="/map">Global Map</a>
+          <a class="navbar-item {isActive('/charts')}" href="/charts">Analytics</a>
+          <a class="navbar-item {isActive('/about')}" href="/about">About</a>
+
+          {#if auth.isAdmin}
+            <a class="navbar-item admin-link" href="/admin">Admin Panel</a>
+          {/if}
         {/if}
       </div>
+
+      <div class="navbar-end">
+  <div class="navbar-item">
+    {#if auth.isAuthenticated}
+      <div class="field is-grouped is-align-items-center">
+        <p class="control">
+          <span class="tag is-coffee-light is-medium">
+            <i class="fas fa-user-circle mr-2"></i> 
+            {#if auth.user?.firstName || auth.user?.lastName}
+              {auth.user?.firstName} {auth.user?.lastName}
+            {:else}
+              {auth.user?.email}
+            {/if}
+          </span>
+        </p>
+        <p class="control">
+          <button class="button is-small is-danger is-light" onclick={() => auth.logout()}>
+            Logout
+          </button>
+        </p>
+      </div>
+    {/if}
+  </div>
+</div>
     </div>
   </div>
 </nav>
 
 <style>
+  .is-coffee { background-color: #faf7f2; border-bottom: 2px solid #6F4E37; }
+  .coffee-text { color: #6F4E37; font-weight: 800; }
+  .is-coffee-light { background-color: #f0e6d6; color: #6F4E37; border: 1px solid #d2b48c; }
+  .admin-link { color: #A67B5B; font-weight: bold; border-left: 1px solid #ddd; margin-left: 10px; padding-left: 20px; }
+
+
   .navbar.is-coffee { 
     background-color: #f5f5f5; 
     border-bottom: 2px solid #e0e0e0; 

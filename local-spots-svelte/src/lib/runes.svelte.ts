@@ -1,11 +1,13 @@
-import { browser } from '$app/environment';
+ import { browser } from '$app/environment';
 import { jwtDecode, type JwtPayload } from "jwt-decode";
+import { localSpotService } from "./services/localspot-service";
+import type { LocalSpot, Category } from "./types/localspot-types";
+import { goto } from '$app/navigation';
 
-// 1. Define the interface for the Token Payload
-// This tells TypeScript what fields exist inside your encrypted token.
+// 1. Interfaces
 interface CustomJwtPayload extends JwtPayload {
-    id?: string;      // Your backend might send 'id'
-    _id?: string;     // ...or '_id'
+    id?: string;
+    _id?: string;
     email: string;
     isAdmin?: boolean;
     firstName?: string;
@@ -20,10 +22,12 @@ export interface User {
     lastName?: string;
 }
 
+// 2. Auth Class (Defined first so userState can reference it)
 class AuthStore {
-    // Svelte 5 State Variables
     token = $state<string | null>(null);
     user = $state<User | null>(null);
+    isAuthenticated = $derived(this.token !== null);
+    isAdmin = $derived(this.user?.isAdmin ?? false);
 
     constructor() {
         if (browser) {
@@ -34,41 +38,76 @@ class AuthStore {
         }
     }
 
-    get isAuthenticated() {
-        return this.token !== null;
-    }
-
-    get isAdmin() {
-        return this.user?.isAdmin ?? false;
-    }
-
     login(tokenValue: string) {
         this.token = tokenValue;
-        localStorage.setItem("token", tokenValue);
+        if (browser) localStorage.setItem("token", tokenValue);
         
         try {
-            // 2. FIX: Use the generic <CustomJwtPayload> instead of : any
             const decoded = jwtDecode<CustomJwtPayload>(tokenValue);
-            
             this.user = {
-                // Now TypeScript knows these properties exist on 'decoded'
                 _id: decoded.id || decoded._id || "", 
                 email: decoded.email,
                 isAdmin: decoded.isAdmin || false,
                 firstName: decoded.firstName || "",
                 lastName: decoded.lastName || ""
             };
+            userState.refresh();
         } catch (e) {
             console.error("Token Decode Error", e);
             this.logout();
         }
     }
 
-    logout() {
-        this.token = null;
-        this.user = null;
+    // src/lib/runes.svelte.ts
+
+async logout() { // 1. Add 'async'
+    this.token = null;
+    this.user = null;
+    
+    if (browser) {
         localStorage.removeItem("token");
-    }
+        userState.spots = [];
+        userState.categories = [];
+        
+        try {
+            // 2. Add 'await' to resolve the promise
+            await goto("/login"); 
+        } catch (err) {
+            console.error("Navigation failed:", err);
+        }
+      }
+   }
 }
 
+// Export the instance
 export const auth = new AuthStore();
+
+// 3. Global State for Private Data
+// We use a getter/setter or explicit type to fix the 'never' error
+// src/lib/runes.svelte.ts
+
+// src/lib/runes.svelte.ts
+
+class UserDataStore {
+  // Use the generic syntax to strictly define the types
+  spots = $state<LocalSpot[]>([]);
+  categories = $state<Category[]>([]);
+
+  async refresh() {
+    if (!auth.token) return;
+
+    try {
+      const [s, c] = await Promise.all([
+        localSpotService.getAllSpots(),
+        localSpotService.getCategories()
+      ]);
+      // Direct assignment now works because the state is typed
+      this.spots = s;
+      this.categories = c;
+    } catch (e) {
+      console.error("Data fetch failed", e);
+    }
+  }
+}
+
+export const userState = new UserDataStore();

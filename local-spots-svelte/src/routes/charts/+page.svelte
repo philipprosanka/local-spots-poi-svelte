@@ -1,29 +1,21 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { localSpotService } from "$lib/services/localspot-service";
   import SpotChart from '$lib/components/SpotChart.svelte';
-  import type { LocalSpot, Category } from "$lib/types/localspot-types";
-  import { auth } from "$lib/runes.svelte";
+  import { auth, userState } from "$lib/runes.svelte";
   import { goto } from "$app/navigation";
 
-  let spots = $state<LocalSpot[]>([]);
-  let categories = $state<Category[]>([]);
   let isLoading = $state(true);
 
   onMount(async () => {
-
-    if (!auth.token) {
+    // Check if user is logged in
+    if (!auth.isAuthenticated) {
       goto("/login");
       return;
     }
 
     try {
-      const [catData, spotData] = await Promise.all([
-        localSpotService.getCategories(),
-        localSpotService.getAllSpots()
-      ]);
-      categories = catData;
-      spots = spotData;
+      // Refresh global state to get latest private data
+      await userState.refresh();
     } catch (error) {
       console.error("Error loading chart data:", error);
     } finally {
@@ -31,21 +23,21 @@
     }
   });
 
-  // Find the category with the highest count of spots
-  let mostPopularCategory = $derived(() => {
-    if (categories.length === 0 || spots.length === 0) return "N/A";
+  // Derived state now points to userState for privacy
+  // Derived state for popular category
+  const mostPopularCategory = $derived(() => {
+    if (userState.categories.length === 0 || userState.spots.length === 0) return "N/A";
 
-    // 1. Create a map of counts per category ID
     const counts: Record<string, number> = {};
     
-    spots.forEach(s => {
+    userState.spots.forEach(s => {
+      // Handle both populated object and string ID
       const catId = typeof s.category === 'object' ? s.category?._id : s.category;
       if (catId) {
         counts[catId] = (counts[catId] || 0) + 1;
       }
     });
 
-    // 2. Find the ID with the maximum value
     let maxCount = -1;
     let popularId = "";
 
@@ -56,47 +48,43 @@
       }
     }
 
-    // 3. Find the name of that category
-    const winner = categories.find(c => c._id === popularId);
+    const winner = userState.categories.find(c => c._id === popularId);
     return winner ? `${winner.name} (${maxCount})` : "N/A";
   });
 </script>
-
 
 <nav class="level box">
   <div class="level-item has-text-centered">
     <div>
       <p class="heading">Total Spots</p>
-      <p class="title">{spots.length}</p>
+      <p class="title">{userState.spots.length}</p>
     </div>
   </div>
   <div class="level-item has-text-centered">
     <div>
       <p class="heading">Categories</p>
-      <p class="title">{categories.length}</p>
+      <p class="title">{userState.categories.length}</p>
     </div>
   </div>
   <div class="level-item has-text-centered">
-    <div class="level-item has-text-centered">
-  <div>
-    <p class="heading">Most Popular Category</p>
-    <p class="title is-5">{mostPopularCategory()}</p>
-  </div>
-</div>
+    <div>
+      <p class="heading">Most Popular Category</p>
+      <p class="title is-5">{mostPopularCategory()}</p>
+    </div>
   </div>
 </nav>
 
 <section class="section">
   <div class="container">
     <h1 class="title">Data Analytics</h1>
-    <h2 class="subtitle">Visualizing your local spots distribution</h2>
+    <h2 class="subtitle">Visualizing your private spots distribution</h2>
 
     {#if isLoading}
       <progress class="progress is-small is-primary" max="100">Loading</progress>
     {:else}
       <div class="columns is-centered">
         <div class="column is-8">
-          <SpotChart {spots} {categories} />
+          <SpotChart spots={userState.spots} categories={userState.categories} />
         </div>
       </div>
       

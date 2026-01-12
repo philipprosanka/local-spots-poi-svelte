@@ -1,6 +1,7 @@
 import { api } from "$lib/api";
 import { auth } from "$lib/runes.svelte";
 
+
 export const authService = {
   async login(email: string, password: string): Promise<boolean> {
     try {

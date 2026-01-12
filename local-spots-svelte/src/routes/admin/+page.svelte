@@ -20,9 +20,21 @@
     });
 
     async function deleteUser(id: string) {
-        if(confirm("Are you sure?")) {
+        // 1. Store the current list in case we need to undo (rollback)
+        const previousUsers = [...users];
+
+        // 2. Instant UI update: Remove the user from the local $state immediately
+        users = users.filter(u => u._id !== id);
+
+        try {
+            // 3. Perform the actual API call in the background
             await api.delete(`users/${id}`);
-            users = users.filter(u => u._id !== id);
+            // Success - the user is already gone from the UI!
+        } catch (e) {
+            // 4. Rollback: If the server fails, put the users back and then alert
+            users = previousUsers;
+            console.error("Delete failed", e);
+            alert("Could not delete user. You might not have permission.");
         }
     }
 </script>

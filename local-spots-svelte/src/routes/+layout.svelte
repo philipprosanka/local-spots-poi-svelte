@@ -1,12 +1,18 @@
 <script lang="ts">
-  import "../app.css"; // WICHTIG: Hier laden wir das Coffee-Theme
+  import "../app.css"; // Ensure Bulma/CSS is loaded
   import Navbar from "$lib/components/Navbar.svelte";
-  
-  let { children } = $props();
+  import { auth, userState } from "$lib/runes.svelte";
+  import { onMount } from "svelte";
+
+  // This ensures data is fetched only once when the app starts
+  onMount(async () => {
+    if (auth.isAuthenticated) {
+      await userState.refresh();
+    }
+  });
 </script>
 
-<div class="app-container">
-  <Navbar /> <main>
-    {@render children()}
-  </main>
-</div>
+<Navbar />
+
+<main>
+  <slot /> </main>

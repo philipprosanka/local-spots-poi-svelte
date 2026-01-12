@@ -1,26 +1,42 @@
 <script lang="ts">
-  let { localspots } = $props();
+  import { userState } from "$lib/runes.svelte";
+  // We use $props() if we want to pass data in, 
+  // but for your private dashboard, we can just use userState.spots
 </script>
 
-<table class="table is-fullwidth">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Beschreibung</th>
-      <th>Kategorie</th>
-      <th>Latitude</th>
-      <th>Longitude</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each localspots as spot}
+<div class="table-container">
+  <table class="table is-fullwidth is-striped is-hoverable">
+    <thead>
       <tr>
-        <td>{spot.name}</td>
-        <td>{spot.description}</td>
-        <td>{spot.category?.name}</td>
-        <td>{spot.lat}</td>
-        <td>{spot.lng}</td>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Category</th>
+        <th>Latitude</th>
+        <th>Longitude</th>
       </tr>
-    {/each}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {#each userState.spots as spot}
+        <tr>
+          <td><strong>{spot.title}</strong></td>
+          <td>{spot.description}</td>
+          <td>
+            <span class="tag is-info is-light">
+              {typeof spot.category === 'object' ? spot.category?.name : 'Uncategorized'}
+            </span>
+          </td>
+          <td class="is-family-monospace">{spot.latitude.toFixed(4)}</td>
+          <td class="is-family-monospace">{spot.longitude.toFixed(4)}</td>
+        </tr>
+      {/each}
+      
+      {#if userState.spots.length === 0}
+        <tr>
+          <td colspan="5" class="has-text-centered has-text-grey italic">
+            No spots found.
+          </td>
+        </tr>
+      {/if}
+    </tbody>
+  </table>
+</div>
