@@ -62,6 +62,35 @@
       <div class="field mt-5">
         <button class="button is-link is-fullwidth">Register</button>
       </div>
+      <div class="box has-text-centered">
+  <h3 class="title is-4">Social Login</h3>
+  
+  <div class="field">
+    <a class="button is-fullwidth is-medium" 
+       style="background-color: #24292e; color: white; border: none;" 
+       href="https://local-spots-poi.onrender.com/auth/github">
+      <span class="icon">
+        <i class="fab fa-github"></i>
+      </span>
+      <span>Mit GitHub anmelden</span>
+    </a>
+  </div>
+
+  <div class="field">
+    <a class="button is-fullwidth is-medium is-outlined" 
+       style="border-color: #4285F4; color: #4285F4;"
+       href="https://local-spots-poi.onrender.com/auth/google">
+      <span class="icon">
+        <i class="fab fa-google"></i>
+      </span>
+      <span>Mit Google anmelden</span>
+    </a>
+  </div>
+
+  <p class="is-size-7 has-text-grey mt-3">
+    Ein Klick genügt – wir erstellen automatisch ein Konto für dich.
+  </p>
+</div>
     </form>
   </div>
 </section>
