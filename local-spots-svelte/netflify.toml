@@ -1,6 +1,0 @@
-[build]
-  base = "local-spots-svelte"
-  command = "npm run build"
-  publish = ".svelte-kit/netlify"
-
-
