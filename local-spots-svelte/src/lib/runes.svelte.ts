@@ -58,8 +58,7 @@ class AuthStore {
         }
     }
 
-    // src/lib/runes.svelte.ts
-
+    
 async logout() { // 1. Add 'async'
     this.token = null;
     this.user = null;
@@ -82,11 +81,7 @@ async logout() { // 1. Add 'async'
 // Export the instance
 export const auth = new AuthStore();
 
-// 3. Global State for Private Data
-// We use a getter/setter or explicit type to fix the 'never' error
-// src/lib/runes.svelte.ts
 
-// src/lib/runes.svelte.ts
 
 class UserDataStore {
   // Use the generic syntax to strictly define the types

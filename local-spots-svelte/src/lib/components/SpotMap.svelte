@@ -56,7 +56,7 @@
     import('leaflet/dist/leaflet.css');
     (window as any).L = L; // Make L available for the updateMarkers function
 
-    // 1. Fix Leaflet Icon paths
+    // 1. Configure Default Marker Icons
     delete (L.Icon.Default.prototype as any)._getIconUrl;
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',

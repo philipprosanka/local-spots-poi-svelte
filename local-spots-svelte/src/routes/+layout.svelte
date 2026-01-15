@@ -5,8 +5,8 @@
   import { onMount } from "svelte";
   
   
-  export const ssr = true;       // Server Side Rendering AN
-  export const prerender = false; // Statische Generierung AUS (bei dynamischen Daten wichtig)
+  export const ssr = true;       // Server Side Rendering ON
+  export const prerender = false; // Static Site Generation OFF
 
   // This ensures data is fetched only once when the app starts
   onMount(async () => {

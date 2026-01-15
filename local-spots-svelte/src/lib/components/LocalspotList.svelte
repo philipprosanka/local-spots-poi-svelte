@@ -1,7 +1,6 @@
 <script lang="ts">
   import { userState } from "$lib/runes.svelte";
-  // We use $props() if we want to pass data in, 
-  // but for your private dashboard, we can just use userState.spots
+
 </script>
 
 <div class="table-container">

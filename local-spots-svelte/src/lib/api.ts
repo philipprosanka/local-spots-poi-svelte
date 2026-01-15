@@ -6,7 +6,7 @@ const BASE_URL = PUBLIC_API_URL;
 async function send(method: string, path: string, data?: unknown, isMultipart = false) {
     const headers: Record<string, string> = {};
 
-    // JWT aus dem Store holen!
+    // Geeting the token from the auth store
     const token = auth.token;
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;

@@ -3,12 +3,11 @@
   import { localSpotService } from "$lib/services/localspot-service";
   import type { LocalSpot, Category } from "$lib/types/localspot-types";
   import { userState } from "$lib/runes.svelte";
-  // WICHTIG: Navbar importieren
   import Navbar from "$lib/components/Navbar.svelte";
-  // Auth importieren für Check
   import { auth } from "$lib/runes.svelte"; 
   import { goto } from "$app/navigation";
   import { page } from '$app/stores';
+
 
   // --- Form State Variables ---
   let title = $state("");

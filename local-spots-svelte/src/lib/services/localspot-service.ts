@@ -26,10 +26,6 @@ export const localSpotService = {
     return await api.postMultipart(`localspots/${spotId}/image`, formData);
   },
 
-  /**
-   * Orchestrates spot creation and image upload.
-   * This keeps the Dashboard code clean and fast.
-   */
   async createSpotWithImage(spotData: Partial<LocalSpot>, file: File | null): Promise<LocalSpot> {
     const newSpot = await this.createSpot(spotData);
 

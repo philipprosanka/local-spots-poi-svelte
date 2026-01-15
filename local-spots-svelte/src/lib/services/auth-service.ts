@@ -20,7 +20,7 @@ export const authService = {
   async register(firstName: string, lastName: string, email: string, password: string): Promise<boolean> {
     try {
       const response = await api.post("users", { firstName, lastName, email, password });
-      return !!response; // true wenn erfolgreich
+      return !!response; // true if registration was successful
     } catch (e) {
         console.error("Registration error:", e);
       return false;

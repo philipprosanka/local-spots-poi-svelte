@@ -4,10 +4,9 @@
   import { goto } from "$app/navigation";
 
   onMount(() => {
-    // Führe Logout aus
     authService.logout();
     
-    // Kurze Verzögerung für UX oder direkt weiterleiten
+    // Timeout für Redirect
     setTimeout(() => {
         goto("/");
     }, 500);
