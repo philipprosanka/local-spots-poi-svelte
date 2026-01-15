@@ -3,6 +3,12 @@
   import { localSpotService } from "$lib/services/localspot-service";
   import type { LocalSpot, Category } from "$lib/types/localspot-types";
   import { userState } from "$lib/runes.svelte";
+  // WICHTIG: Navbar importieren
+  import Navbar from "$lib/components/Navbar.svelte";
+  // Auth importieren für Check
+  import { auth } from "$lib/runes.svelte"; 
+  import { goto } from "$app/navigation";
+  import { page } from '$app/stores';
 
   // --- Form State Variables ---
   let title = $state("");
@@ -16,6 +22,18 @@
   let isLoading = $state(true);
 
   onMount(async () => {
+    // Token Check (falls Redirect von Google)
+    const token = $page.url.searchParams.get('token');
+    if (token) {
+      auth.login(token);
+      goto('/dashboard', { replaceState: true });
+    }
+
+    if (!auth.isLoggedIn) {
+       goto("/login");
+       return;
+    }
+
     try {
       await userState.refresh();
     } catch (error) {
@@ -43,7 +61,6 @@
       
       const newSpot = await localSpotService.createSpotWithImage(spotData, file);
       
-      // Update Global State
       userState.spots = [...userState.spots, newSpot];
       resetForm(); 
     } catch (err: any) {
@@ -67,6 +84,8 @@
     latitude = 48.137154; longitude = 11.576124;
   }
 </script>
+
+<Navbar />
 
 <section class="section">
   <div class="container">
@@ -106,28 +125,16 @@
               </div>
             </div>
 
-           <div class="field is-grouped">
-  <div class="control is-expanded">
-    <label class="label is-small" for="latitude-input">Lat</label>
-    <input 
-      id="latitude-input" 
-      class="input is-small" 
-      type="number" 
-      step="any" 
-      bind:value={latitude}
-    >
-  </div>
-  <div class="control is-expanded">
-    <label class="label is-small" for="longitude-input">Long</label>
-    <input 
-      id="longitude-input" 
-      class="input is-small" 
-      type="number" 
-      step="any" 
-      bind:value={longitude}
-    >
-  </div>
-</div>
+            <div class="field is-grouped">
+              <div class="control is-expanded">
+                <label class="label is-small" for="latitude-input">Lat</label>
+                <input id="latitude-input" class="input is-small" type="number" step="any" bind:value={latitude}>
+              </div>
+              <div class="control is-expanded">
+                <label class="label is-small" for="longitude-input">Long</label>
+                <input id="longitude-input" class="input is-small" type="number" step="any" bind:value={longitude}>
+              </div>
+            </div>
 
             <div class="field">
               <label class="label">Photo</label>
@@ -164,43 +171,43 @@
             <div class="fixed-grid has-1-cols-mobile has-2-cols-tablet has-2-cols-desktop">
                 <div class="grid">
                     {#each userState.spots as spot (spot._id)}
-  <div class="cell">
-    <div class="card h-100 coffee-card">
-      {#if spot.img}
-        <div class="card-image">
-          <figure class="image is-4by3">
-            <img src={spot.img} alt={spot.title} class="spot-img">
-          </figure>
-        </div>
-      {/if}
-      
-      <div class="card-content">
-        <div class="mb-2">
-          <span class="tag is-coffee-tag is-rounded is-small">
-             <i class="fas fa-tag mr-1"></i>
-             {typeof spot.category === 'object' ? spot.category?.name : 'General'}
-          </span>
-        </div>
+                      <div class="cell">
+                        <div class="card h-100 coffee-card">
+                          {#if spot.img}
+                            <div class="card-image">
+                              <figure class="image is-4by3">
+                                <img src={spot.img} alt={spot.title} class="spot-img">
+                              </figure>
+                            </div>
+                          {/if}
+                          
+                          <div class="card-content">
+                            <div class="mb-2">
+                              <span class="tag is-coffee-tag is-rounded is-small">
+                                <i class="fas fa-tag mr-1"></i>
+                                {typeof spot.category === 'object' ? spot.category?.name : 'General'}
+                              </span>
+                            </div>
 
-        <p class="title is-5 coffee-text mb-2">{spot.title}</p>
-        <p class="content is-small has-text-grey">{spot.description}</p>
-        
-        <div class="is-flex is-align-items-center mt-3">
-            <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-location-arrow"></i></span>
-            <span class="is-size-7 has-text-grey-light">
-                {spot.latitude.toFixed(3)}, {spot.longitude.toFixed(3)}
-                  </span>
-                    </div>
-                    </div>
+                            <p class="title is-5 coffee-text mb-2">{spot.title}</p>
+                            <p class="content is-small has-text-grey">{spot.description}</p>
+                            
+                            <div class="is-flex is-align-items-center mt-3">
+                                <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-location-arrow"></i></span>
+                                <span class="is-size-7 has-text-grey-light">
+                                    {spot.latitude.toFixed(3)}, {spot.longitude.toFixed(3)}
+                                </span>
+                            </div>
+                          </div>
 
-                      <footer class="card-footer">
-                      <button class="card-footer-item delete-btn" onclick={() => deleteSpot(spot._id)}>
-                      <i class="fas fa-trash-alt mr-2"></i> Delete
-                      </button>
-                    </footer>
-                    </div>
-                  </div>
-{               /each}
+                          <footer class="card-footer">
+                            <button class="card-footer-item delete-btn" onclick={() => deleteSpot(spot._id)}>
+                              <i class="fas fa-trash-alt mr-2"></i> Delete
+                            </button>
+                          </footer>
+                        </div>
+                      </div>
+                    {/each}
                 </div>
             </div>
         {/if}
@@ -248,10 +255,10 @@
     font-weight: 600;
     border: none;
     background: transparent;
+    cursor: pointer;
   }
   .delete-btn:hover {
     background-color: #fff5f7;
     color: #cc0f35;
   }
-
 </style>
