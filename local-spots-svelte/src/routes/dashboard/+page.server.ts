@@ -93,7 +93,7 @@ export const actions: Actions = {
                 imageFormData.append('imagefile', imageFile);
 
                 const imageResponse = await fetch(`https://local-spots-poi.onrender.com/api/localspots/${newSpotId}/image`, {
-                    method: 'POST', // Oder PUT, je nach deiner API (im alten Service war es POST)
+                    method: 'POST', 
                     headers: {
                         'Authorization': `Bearer ${token}`
                         // KEIN Content-Type hier! fetch setzt Boundary automatisch bei FormData

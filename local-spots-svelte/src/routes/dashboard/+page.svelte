@@ -6,7 +6,6 @@
   // Daten vom Server empfangen
   let { data }: { data: PageData } = $props();
 
-  // FIX: Hier darf KEIN console.log drin stehen, das 'userState' liest!
   $effect(() => {
       if (data.spots) {
           userState.spots = data.spots;
