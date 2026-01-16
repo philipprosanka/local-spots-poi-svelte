@@ -1,9 +1,6 @@
 <script lang="ts">
-  import { auth } from "$lib/runes.svelte";
+  let { data } = $props();
 </script>
-
-
-
 
 <section class="hero is-fullheight-with-navbar is-light">
   <div class="hero-body">
@@ -19,7 +16,7 @@
             Sign up or Log in to discover the best hidden gems in your neighborhood.
           </p>
           
-          {#if !auth.token}
+          {#if !data.user}
             <div class="buttons are-medium">
               <a href="/login" class="button is-primary is-rounded px-6">Log in</a>
               <a href="/signup" class="button is-light is-rounded px-6">Sign up</a>

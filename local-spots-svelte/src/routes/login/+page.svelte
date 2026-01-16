@@ -1,61 +1,47 @@
 <script lang="ts">
-    import { api } from "$lib/api";
-    import { auth } from "$lib/runes.svelte";
-    import { goto } from "$app/navigation";
-    // Navbar import removed
-  
-    let email = $state("");
-    let password = $state("");
-    let error = $state("");
-    let loading = $state(false); // Loading state for better UX
+    import { enhance } from '$app/forms';
+    import type { ActionData } from './$types';
+    import Navbar from "$lib/components/Navbar.svelte";
 
-    async function handleLogin(e: Event) {
-        e.preventDefault();
-        loading = true;
-        error = "";
-        try {
-            const res = await api.post("users/authenticate", { email, password });
-            if (res.success && res.token) {
-                auth.login(res.token);
-                goto("/dashboard");
-            } else {
-                error = "Login failed.";
-            }
-        } catch (err) {
-            error = "Invalid credentials";
-        } finally {
-            loading = false;
-        }
-    }
+    
+    let { form }: { form: ActionData } = $props();
 </script>
+
 
 <section class="section">
     <div class="container column is-4 is-offset-4">
         <div class="box">
             <h1 class="title has-text-centered">Log in</h1>
             
-            <form onsubmit={handleLogin}>
+            <form method="POST" use:enhance>
                 <div class="field">
                     <label class="label" for="email">Email</label>
                     <div class="control">
-                        <input id="email" class="input" type="email" bind:value={email} required placeholder="homer@simpson.com">
+                        <input 
+                            id="email" 
+                            name="email" 
+                            class="input" 
+                            type="email" 
+                            value={form?.email ?? ''} 
+                            required 
+                            placeholder="homer@simpson.com"
+                        >
                     </div>
                 </div>
+                
                 <div class="field">
                     <label class="label" for="password">Password</label>
                     <div class="control">
-                        <input id="password" class="input" type="password" bind:value={password} required>
+                        <input id="password" name="password" class="input" type="password" required>
                     </div>
                 </div>
 
-                {#if error}
-                    <div class="notification is-danger is-light">{error}</div>
+                {#if form?.error}
+                    <div class="notification is-danger is-light">{form.error}</div>
                 {/if}
 
                 <div class="field mt-5">
-                    <button class="button is-primary is-fullwidth {loading ? 'is-loading' : ''}" type="submit">
-                        Log in
-                    </button>
+                    <button class="button is-primary is-fullwidth">Log in</button>
                 </div>
             </form>
             
@@ -85,7 +71,10 @@
                 </div>
 
                 <p class="is-size-7 has-text-grey mt-4">
-                    One click is enough – we'll automatically create an account for you.
+                    One click is enough – we automatically create an account for you.
+                </p>
+                <p class="is-size-7 mt-2">
+                    No account yet? <a href="/signup">Register here</a>
                 </p>
             </div>
         </div>

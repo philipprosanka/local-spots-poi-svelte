@@ -21,7 +21,7 @@
           <td>{spot.description}</td>
           <td>
             <span class="tag is-info is-light">
-              {typeof spot.category === 'object' ? spot.category?.name : 'Uncategorized'}
+              {typeof spot.category === 'object' ? spot.category?.name ?? 'Uncategorized' : 'Uncategorized'}
             </span>
           </td>
           <td class="is-family-monospace">{spot.latitude.toFixed(4)}</td>

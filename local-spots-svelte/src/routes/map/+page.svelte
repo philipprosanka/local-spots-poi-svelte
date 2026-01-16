@@ -1,18 +1,14 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import SpotMap from '$lib/components/SpotMap.svelte';
   import { userState } from "$lib/runes.svelte";
+  
+  // Daten vom Server empfangen
+  let { data } = $props();
 
-  let isLoading = $state(true);
-
-  onMount(async () => {
-    try {
-      // Ensure the global state is populated. 
-      // If the Dashboard already ran this, it will be nearly instant.
-      await userState.refresh();
-    } finally {
-      isLoading = false;
-    }
+  // Sync mit globalem State für die Map-Komponente
+  $effect(() => {
+    if (data.spots) userState.spots = data.spots;
+    if (data.categories) userState.categories = data.categories;
   });
 </script>
 
@@ -23,14 +19,11 @@
         <h1 class="title">My Global Map</h1>
       </div>
       <div class="level-right">
-        <p class="has-text-grey">Showing {userState.spots.length} private spots.</p>
+        <p class="has-text-grey">Showing {data.spots.length} private spots.</p>
       </div>
     </div>
 
-    {#if isLoading}
-      <progress class="progress is-primary" max="100">Loading Map Data...</progress>
-    {:else}
-      <SpotMap spots={userState.spots} categories={userState.categories} />
-    {/if}
+    <SpotMap /> 
+    
   </div>
 </section>

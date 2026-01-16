@@ -3,15 +3,25 @@
   // @ts-ignore
   import { Chart } from 'frappe-charts';
   import type { LocalSpot, Category } from '$lib/types/localspot-types';
-  import { userState } from "$lib/runes.svelte"; // Import the private global state
+
+  
+  let { 
+    spots = [], 
+    categories = [] 
+  }: { 
+    spots: LocalSpot[], 
+    categories: Category[] 
+  } = $props();
 
   let chart: any;
 
-  // We use a helper to format the data for Frappe Charts
+  // Helper Funktion nutzt jetzt die Props (spots, categories) statt userState
   function getChartData() {
-    const labels = userState.categories.map((c: Category) => c.name);
-    const values = userState.categories.map((c: Category) => {
-      return userState.spots.filter((s: LocalSpot) => {
+    const labels = categories.map((c) => c.name);
+    
+    const values = categories.map((c) => {
+      return spots.filter((s) => {
+        // Sicherer Zugriff auf die ID (falls populated Objekt oder String ID)
         const catId = typeof s.category === 'object' ? s.category?._id : s.category;
         return catId === c._id;
       }).length;
@@ -23,9 +33,10 @@
     };
   }
 
-  // This Effect ensures the chart re-draws whenever userState changes
+  // Effect: Wenn sich die Props ändern, Chart updaten
   $effect(() => {
-    if (chart && userState.spots) {
+    // Wir prüfen auf 'chart' und ob 'spots' Daten hat
+    if (chart && spots) {
       chart.update(getChartData());
     }
   });

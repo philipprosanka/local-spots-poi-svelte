@@ -1,22 +1,16 @@
 <script lang="ts">
-  import "../app.css"; // Ensure Bulma/CSS is loaded
-  import Navbar from "$lib/components/Navbar.svelte";
-  import { auth, userState } from "$lib/runes.svelte";
-  import { onMount } from "svelte";
-  
-  
-  export const ssr = true;       // Server Side Rendering ON
-  export const prerender = false; // Static Site Generation OFF
-
-  // This ensures data is fetched only once when the app starts
-  onMount(async () => {
-    if (auth.isAuthenticated) {
-      await userState.refresh();
-    }
-  });
+    import "../app.css"; // Ensure Bulma/CSS is loaded
+    import Navbar from "$lib/components/Navbar.svelte";
+    import { page } from '$app/stores';
+    import type { LayoutData} from './$types';
+     
+    let { data, children } = $props();
 </script>
 
-<Navbar />
-
-<main>
-  <slot /> </main>
+<div class="app-container">
+    <Navbar user={data.user} />
+    
+    <main class="main-content">
+        {@render children()}
+    </main>
+</div>

@@ -1,42 +1,9 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    import { api } from "$lib/api";
-    import { auth } from "$lib/runes.svelte";
-    import type { User } from "$lib/types/localspot-types";
-    import { goto } from "$app/navigation";
+    import { enhance } from '$app/forms';
+    import type { PageData } from './$types';
 
-    let users = $state<User[]>([]);
-
-    onMount(async () => {
-        if (!auth.isAuthenticated) {
-             goto("/login");
-             return;
-        }
-        try {
-            users = await api.get("users");
-        } catch (e) {
-            console.log("Nicht autorisiert oder Fehler", e);
-        }
-    });
-
-    async function deleteUser(id: string) {
-        // 1. Store the current list in case we need to undo (rollback)
-        const previousUsers = [...users];
-
-        // 2. Instant UI update: Remove the user from the local $state immediately
-        users = users.filter(u => u._id !== id);
-
-        try {
-            // 3. Perform the actual API call in the background
-            await api.delete(`users/${id}`);
-            // Success - the user is already gone from the UI!
-        } catch (e) {
-            // 4. Rollback: If the server fails, put the users back and then alert
-            users = previousUsers;
-            console.error("Delete failed", e);
-            alert("Could not delete user. You might not have permission.");
-        }
-    }
+    // 1. User Daten vom Server empfangen
+    let { data }: { data: PageData } = $props();
 </script>
 
 <section class="section">
@@ -54,7 +21,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {#each users as user}
+                    {#each data.users as user (user._id)}
                         <tr>
                             <td>{user.firstName}</td>
                             <td>{user.lastName}</td>
@@ -62,9 +29,12 @@
                             <td>{user.isAdmin ? '✅' : ''}</td>
                             <td>
                                 {#if !user.isAdmin}
-                                    <button class="button is-small is-danger" onclick={() => deleteUser(user._id)}>
-                                        Delete
-                                    </button>
+                                    <form method="POST" action="?/deleteUser" use:enhance>
+                                        <input type="hidden" name="id" value={user._id}>
+                                        <button class="button is-small is-danger">
+                                            Delete
+                                        </button>
+                                    </form>
                                 {/if}
                             </td>
                         </tr>
