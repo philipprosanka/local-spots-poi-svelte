@@ -4,13 +4,12 @@ import type { PageServerLoad } from './$types';
 
 // 1. FESTE FARBZUORDNUNG (Mapping)
 const CATEGORY_COLORS: Record<string, string> = {
-    
-    'Nature': '#3298DC',       // Blau (Bulma Info)
+    'Nature': '#48C774',       // Grün (Bulma Info)
     'Food & Drink': '#F14668', // Rot (Bulma Danger)
-    'Culture': '#48C774',      // Grün (Bulma Success)
+    'Culture': '#3298DC',      // Blau (Bulma Success)
     'Nightlife': '#8A2BE2',    // Lila (BlueViolet)
     
-    // Fallback Farben für andere mögliche Kategorien
+    // Fallback Farben
     'Sightseeing': '#FFDD57',  // Gelb (Bulma Warning)
     'History': '#6F4E37',      // Coffee (Braun)
     'Shopping': '#E67E22',     // Orange
@@ -42,13 +41,12 @@ export const load = async ({ parent, fetch }: Parameters<PageServerLoad>[0]) => 
                  return cId === cat._id;
             }).length;
 
-            // Wir nutzen cat.name als Schlüssel.
             const assignedColor = CATEGORY_COLORS[cat.name] || DEFAULT_COLOR;
 
             return { name: cat.name, count, color: assignedColor };
         });
 
-        
+        // --- Timeline Berechnungen ---
         const spotsByDate: Record<string, number> = {};
         spots.forEach((spot: any) => {
             if (spot._id) {
@@ -88,9 +86,10 @@ export const load = async ({ parent, fetch }: Parameters<PageServerLoad>[0]) => 
         return {
             totalSpots: spots.length,
             charts: {
-                categoryLabels: chartData.map(d => d.name),
-                categoryValues: chartData.map(d => d.count),
-                categoryColors: chartData.map(d => d.color), // Die Map-Farben
+                // HIER WAR DER FEHLER: Wir schreiben (d: any), damit TypeScript zufrieden ist
+                categoryLabels: chartData.map((d: any) => d.name),
+                categoryValues: chartData.map((d: any) => d.count),
+                categoryColors: chartData.map((d: any) => d.color), 
                 trendLabels,
                 trendValues
             }
