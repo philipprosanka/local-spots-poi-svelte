@@ -44,14 +44,14 @@
     const L = (window as any).L; 
     if (!L) return;
 
-    // 1. Aufräumen
+    
     Object.values(overlays).forEach(layer => layer.clearLayers());
     if (layerControl) {
         map.removeControl(layerControl);
         layerControl = null;
     }
 
-    // 2. Overlays vorbereiten
+    
     const activeCategories = new Set();
     categories.forEach(cat => {
          if (!overlays[cat.name]) {
@@ -59,13 +59,10 @@
          }
     });
 
-    // 3. Marker setzen
-    // ... in updateMarkers() ...
+    
 
     spots.forEach((spot) => {
-      // FIX 1: "name" vs "title" Problem lösen
-      // Wir casten kurz auf 'any', um zu prüfen, ob 'name' oder 'title' da ist.
-      // Das beruhigt TypeScript.
+      
       const spotName = (spot as any).name || (spot as any).title || 'Unknown Spot';
 
       const spotCatId = (typeof spot.category === 'object' && spot.category !== null) 
@@ -88,7 +85,7 @@
            if(e.target._icon) e.target._icon.style.filter = `hue-rotate(${hueShift}deg)`;
         });
 
-        // Popup mit der neuen Variable 'spotName' nutzen
+        
         marker.bindPopup(`
             <div class="p-1">
                 <strong class="is-size-6">${spotName}</strong><br>
@@ -101,9 +98,9 @@
       }
     });
 
-    // 4. LAYER CONTROL & SATELLITE VIEW (Hier ist die Neuerung!)
+    
     if (interactive) {
-        // A. Basis Karten definieren
+        
         const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
             attribution: '© OpenStreetMap' 
         });
@@ -111,16 +108,14 @@
             attribution: 'Tiles &copy; Esri' 
         });
 
-        // WICHTIG: Damit 'streets' der Standard ist, müssen wir sicherstellen, dass es auf der Map liegt
-        // Wir prüfen nicht, ob es schon drauf ist, sondern setzen das Control neu auf.
-        // Das Base Layer Management übernimmt Leaflet.
+        
         
         const baseMaps = {
             "Map View": streets,
             "Satellite": satellite
         };
 
-        // B. Kategorien (Overlays) sammeln
+        
         const overlayMaps: Record<string, any> = {};
         categories.forEach(cat => {
             if (activeCategories.has(cat.name)) {
@@ -128,10 +123,10 @@
             }
         });
 
-        // C. Control erstellen (Base + Overlays)
+        
         layerControl = L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
     }
-
+    
     // 5. Auto-Zoom
     const allMarkers = Object.values(overlays).flatMap(layer => layer.getLayers());
     if (allMarkers.length > 0) {
