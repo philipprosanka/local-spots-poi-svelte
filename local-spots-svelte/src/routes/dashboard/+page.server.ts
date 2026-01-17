@@ -2,7 +2,6 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { dev } from '$app/environment';
 
-// Hier definieren wir die URL zentral:
 const API_BASE_URL = dev
     ? 'http://localhost:3000'
     : 'https://local-spots-poi.onrender.com';
@@ -35,7 +34,7 @@ export const actions: Actions = {
 
         const formData = await request.formData();
 
-        // --- 1️⃣ Spot erstellen ---
+        // 1. Spot erstellen
         const spotData = {
             title: formData.get('title'),
             description: formData.get('description'),
@@ -63,47 +62,58 @@ export const actions: Actions = {
             return fail(500, { error: 'Server error' });
         }
 
-        // --- 2️⃣ Bilder Upload ---
+        // 2. Bilder Upload
         const rawImages = formData.getAll('images');
         const validImages = rawImages.filter(f => f instanceof File && f.size > 0 && f.name !== 'undefined');
 
         if (newSpotId && validImages.length > 0) {
             try {
                 const uploadFormData = new FormData();
-
+                
                 for (const file of validImages) {
                     const f = file as File;
                     const arrayBuffer = await f.arrayBuffer();
                     const blob = new Blob([arrayBuffer], { type: f.type });
-
-                    // WICHTIG: Der Key muss 'images' heißen
                     uploadFormData.append('images', blob, f.name);
                 }
 
-                // FIX: Variable name korrigiert (API_BASE_URL)
-                console.log(`Frontend: Sende an ${API_BASE_URL}...`);
+                console.log(`Frontend: Sende ${validImages.length} Bilder an ${API_BASE_URL}...`);
 
                 const imageResponse = await fetch(`${API_BASE_URL}/api/localspots/${newSpotId}/image`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }, // KEIN Content-Type!
+                    method: 'POST', 
+                    headers: { 'Authorization': `Bearer ${token}` },
                     body: uploadFormData,
                     // @ts-ignore
                     duplex: 'half'
                 });
 
+                // --- FIX: Fehlerbehandlung für große Dateien ---
                 if (!imageResponse.ok) {
-                    const errorText = await imageResponse.text();
-                    console.error("❌ Frontend Upload Error:", errorText);
-                } else {
-                    console.log("✅ Frontend Upload Success!");
+                    // Status 413 = Payload Too Large (kommt oft von Nginx/Hapi/Render direkt)
+                    if (imageResponse.status === 413) {
+                        return fail(413, { error: 'Total file size is too large. Please upload fewer or smaller images.' });
+                    }
+
+                    // Versuchen Text zu lesen, falls JSON fehlschlägt
+                    let errorMessage = imageResponse.statusText;
+                    try {
+                        const errorJson = await imageResponse.json();
+                        if (errorJson.message) errorMessage = errorJson.message;
+                    } catch (e) {
+                        // Wenn kein JSON, nehmen wir den Text Body
+                        const text = await imageResponse.text();
+                        if (text) errorMessage = text;
+                    }
+
+                    console.error("❌ Upload Error:", errorMessage);
+                    return fail(imageResponse.status, { error: `Upload failed: ${errorMessage}` });
                 }
             } catch (error) {
-                // FIX: catch Block hinzugefügt
-                console.error("Frontend Fetch Error during upload:", error);
+                console.error("Frontend Fetch Network Error:", error);
+                return fail(500, { error: 'Network error during upload (Timeout or Connection lost)' });
             }
         }
 
-        // FIX: Return am Ende der Funktion, damit es immer ausgeführt wird
         return { success: true, newSpotId };
     },
 
@@ -135,12 +145,28 @@ export const actions: Actions = {
         if (!spotId || !imageId) return fail(400, { error: 'Missing IDs' });
 
         const safeImageId = encodeURIComponent(imageId.toString());
-        const res = await fetch(`${API_BASE_URL}/api/localspots/${spotId}/image?imageId=${safeImageId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        
+        // --- FIX: URL Format korrigiert ---
+        // VORHER: .../image?imageId=... (Query Param)
+        // NACHHER: .../images/... (Path Param - Standard REST)
+        const url = `${API_BASE_URL}/api/localspots/${spotId}/images/${safeImageId}`;
+        
+        console.log("Deleting Image at:", url);
 
-        if (!res.ok) return fail(res.status, { error: 'Failed to delete image' });
-        return { success: true };
+        try {
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!res.ok) {
+                console.error("Backend Delete Failed:", res.status, res.statusText);
+                return fail(res.status, { error: 'Failed to delete image on server' });
+            }
+            return { success: true };
+        } catch (error) {
+            console.error("Delete Connection Error:", error);
+            return fail(500, { error: 'Connection error' });
+        }
     }
 };
