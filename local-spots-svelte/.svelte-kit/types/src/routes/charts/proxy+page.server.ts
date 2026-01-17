@@ -86,7 +86,7 @@ export const load = async ({ parent, fetch }: Parameters<PageServerLoad>[0]) => 
         return {
             totalSpots: spots.length,
             charts: {
-                // HIER WAR DER FEHLER: Wir schreiben (d: any), damit TypeScript zufrieden ist
+                
                 categoryLabels: chartData.map((d: any) => d.name),
                 categoryValues: chartData.map((d: any) => d.count),
                 categoryColors: chartData.map((d: any) => d.color), 

@@ -28,15 +28,24 @@ export interface Category {
 };
 
 
+
+
 export interface LocalSpot {
-  _id: string;
-  title: string;
+  _id?: string;
+  title: string; 
   description: string;
   latitude: number;
   longitude: number;
-  userid?: string; 
-  category?: Category | string; //Expanded Object or String-ID
-  img?: string;
-  imagePublicId?: string;
-};
+  userid?: string;
+  category?: Category | any;
+  
 
+  images?: {
+    url: string;
+    publicId: string;
+  }[];
+
+ 
+  img?: string;
+  imgPublicId?: string;
+}

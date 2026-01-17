@@ -1,32 +1,28 @@
 // @ts-nocheck
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import { dev } from '$app/environment';
+
+// Hier definieren wir die URL zentral:
+const API_BASE_URL = dev
+    ? 'http://localhost:3000'
+    : 'https://local-spots-poi.onrender.com';
 
 export const load = async ({ parent, fetch }: Parameters<PageServerLoad>[0]) => {
-    // 1. User vom Layout "erben"
     const { user } = await parent();
-    
-    // 2. Security Check
     if (!user) throw redirect(302, '/login');
-
-    // 3. Daten laden (mit dem Token aus dem User-Objekt)
     const token = user.token;
-    
+
     try {
-        const spotsRes = await fetch('https://local-spots-poi.onrender.com/api/localspots', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const spots = spotsRes.ok ? await spotsRes.json() : [];
+        const [spotsRes, catRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/localspots`, { headers: { Authorization: `Bearer ${token}` } }),
+            fetch(`${API_BASE_URL}/api/categories`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
 
-        const catRes = await fetch('https://local-spots-poi.onrender.com/api/categories', {
-             headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const categories = catRes.ok ? await catRes.json() : [];
-
-        // Wir geben spots & categories zurück. 'user' muss nicht zurückgegeben werden, 
-        // da er schon im Layout ist, aber manchmal ist es explizit gewünscht.
-        return { spots, categories };
-
+        return {
+            spots: spotsRes.ok ? await spotsRes.json() : [],
+            categories: catRes.ok ? await catRes.json() : []
+        };
     } catch (e) {
         console.error("Load Error:", e);
         return { spots: [], categories: [] };
@@ -34,99 +30,118 @@ export const load = async ({ parent, fetch }: Parameters<PageServerLoad>[0]) => 
 };
 
 export const actions = {
-    create: async ({ request, locals, fetch }: import('./$types').RequestEvent) => {
-    
+    create: async ({ request, locals }: import('./$types').RequestEvent) => {
         const token = locals.user?.token;
-
         if (!token) return fail(401, { error: 'Not logged in' });
 
         const formData = await request.formData();
 
-        // --- SCHRITT 1: Spot erstellen (JSON) ---
+        // --- 1️⃣ Spot erstellen ---
+        const spotData = {
+            title: formData.get('title'),
+            description: formData.get('description'),
+            category: formData.get('category'),
+            latitude: Number(formData.get('latitude')),
+            longitude: Number(formData.get('longitude'))
+        };
+
         let newSpotId: string;
-
         try {
-            // Wir bauen das JSON Objekt manuell zusammen, weil der Endpunkt JSON erwartet
-            const spotData = {
-                title: formData.get('title'),
-                description: formData.get('description'),
-                category: formData.get('category'), 
-                latitude: Number(formData.get('latitude')),   
-                longitude: Number(formData.get('longitude'))  
-            };
-
-            console.log("Sende Spot Daten (JSON):", spotData);
-
-            const createResponse = await fetch('https://local-spots-poi.onrender.com/api/localspots', {
+            const createRes = await fetch(`${API_BASE_URL}/api/localspots`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' 
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(spotData)
             });
+            if (!createRes.ok) return fail(createRes.status, { error: 'Spot creation failed' });
 
-            if (!createResponse.ok) {
-                const err = await createResponse.text();
-                console.error("Fehler beim Spot-Erstellen:", err);
-                return fail(createResponse.status, { error: 'Spot konnte nicht erstellt werden' });
-            }
-
-            const createdSpot = await createResponse.json();
+            const createdSpot = await createRes.json();
             newSpotId = createdSpot._id || createdSpot.id;
-            console.log("Spot erstellt mit ID:", newSpotId);
-
         } catch (err) {
-            console.error(err);
-            return fail(500, { error: 'Serverfehler beim Erstellen' });
+            console.error("Spot creation error:", err);
+            return fail(500, { error: 'Server error' });
         }
 
-        // --- SCHRITT 2: Bild hochladen (falls vorhanden) ---
-        const imageFile = formData.get('imagefile') as File;
+        // --- 2️⃣ Bilder Upload ---
+        const rawImages = formData.getAll('images');
+        const validImages = rawImages.filter(f => f instanceof File && f.size > 0 && f.name !== 'undefined');
 
-        // Prüfen, ob wirklich eine Datei ausgewählt wurde (Name existiert und Größe > 0)
-        if (newSpotId && imageFile && imageFile.size > 0 && imageFile.name !== 'undefined') {
+        if (newSpotId && validImages.length > 0) {
             try {
-                console.log("Lade Bild hoch...");
-                
-                // Neue FormData nur für das Bild
-                const imageFormData = new FormData();
-                imageFormData.append('imagefile', imageFile);
+                const uploadFormData = new FormData();
 
-                const imageResponse = await fetch(`https://local-spots-poi.onrender.com/api/localspots/${newSpotId}/image`, {
-                    method: 'POST', 
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                        // KEIN Content-Type hier! fetch setzt Boundary automatisch bei FormData
-                    },
-                    body: imageFormData
+                for (const file of validImages) {
+                    const f = file as File;
+                    const arrayBuffer = await f.arrayBuffer();
+                    const blob = new Blob([arrayBuffer], { type: f.type });
+
+                    // WICHTIG: Der Key muss 'images' heißen
+                    uploadFormData.append('images', blob, f.name);
+                }
+
+                // FIX: Variable name korrigiert (API_BASE_URL)
+                console.log(`Frontend: Sende an ${API_BASE_URL}...`);
+
+                const imageResponse = await fetch(`${API_BASE_URL}/api/localspots/${newSpotId}/image`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }, // KEIN Content-Type!
+                    body: uploadFormData,
+                    // @ts-ignore
+                    duplex: 'half'
                 });
 
                 if (!imageResponse.ok) {
-                    console.error("Bild-Upload fehlgeschlagen:", await imageResponse.text());
-                    
+                    const errorText = await imageResponse.text();
+                    console.error("❌ Frontend Upload Error:", errorText);
                 } else {
-                    console.log("Bild erfolgreich hochgeladen!");
+                    console.log("✅ Frontend Upload Success!");
                 }
-            } catch (err) {
-                console.error("Fehler beim Bild-Upload:", err);
+            } catch (error) {
+                // FIX: catch Block hinzugefügt
+                console.error("Frontend Fetch Error during upload:", error);
             }
         }
 
+        // FIX: Return am Ende der Funktion, damit es immer ausgeführt wird
+        return { success: true, newSpotId };
+    },
+
+    delete: async ({ request, locals }: import('./$types').RequestEvent) => {
+        const token = locals.user?.token;
+        if (!token) return fail(401);
+
+        const data = await request.formData();
+        const spotId = data.get('id');
+        if (!spotId) return fail(400, { error: 'Missing spot ID' });
+
+        const res = await fetch(`${API_BASE_URL}/api/localspots/${spotId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) return fail(res.status, { error: 'Delete failed' });
         return { success: true };
     },
 
-    delete: async ({ request, locals, fetch }: import('./$types').RequestEvent) => {
-        
+    deleteImage: async ({ request, locals }: import('./$types').RequestEvent) => {
         const token = locals.user?.token;
         if (!token) return fail(401);
-        const data = await request.formData();
-        const spotId = data.get('id');
-        const response = await fetch(`https://local-spots-poi.onrender.com/api/localspots/${spotId}`, {
-    method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` }
-});
 
-if (!response.ok) return fail(response.status, { error: 'Delete failed' });
+        const data = await request.formData();
+        const spotId = data.get('spotId');
+        const imageId = data.get('imageId');
+
+        if (!spotId || !imageId) return fail(400, { error: 'Missing IDs' });
+
+        const safeImageId = encodeURIComponent(imageId.toString());
+        const res = await fetch(`${API_BASE_URL}/api/localspots/${spotId}/image?imageId=${safeImageId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) return fail(res.status, { error: 'Failed to delete image' });
+        return { success: true };
     }
 };;null as any as Actions;
