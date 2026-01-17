@@ -60,7 +60,7 @@ export const actions: Actions = {
             newSpotId = createdSpot._id || createdSpot.id;
         } catch (err) {
             console.error("Spot creation error:", err);
-            return fail(500, { error: 'Server error' });
+            return fail(500, { error: 'Server unavailable' });
         }
 
         // --- 2️⃣ Bilder Upload ---
@@ -70,41 +70,41 @@ export const actions: Actions = {
         if (newSpotId && validImages.length > 0) {
             try {
                 const uploadFormData = new FormData();
-
+                
                 for (const file of validImages) {
                     const f = file as File;
                     const arrayBuffer = await f.arrayBuffer();
                     const blob = new Blob([arrayBuffer], { type: f.type });
-
-                    // WICHTIG: Der Key muss 'images' heißen
                     uploadFormData.append('images', blob, f.name);
                 }
 
-                // FIX: Variable name korrigiert (API_BASE_URL)
-                console.log(`Frontend: Sende an ${API_BASE_URL}...`);
+                console.log(`Frontend: Sende Bilder an ${API_BASE_URL}...`);
 
                 const imageResponse = await fetch(`${API_BASE_URL}/api/localspots/${newSpotId}/image`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }, // KEIN Content-Type!
+                    headers: { 'Authorization': `Bearer ${token}` },
                     body: uploadFormData,
                     // @ts-ignore
                     duplex: 'half'
                 });
 
                 if (!imageResponse.ok) {
+                    // WICHTIG: Hier fangen wir den Fehler ab!
                     const errorText = await imageResponse.text();
-                    console.error("❌ Frontend Upload Error:", errorText);
-                } else {
-                    console.log("✅ Frontend Upload Success!");
+                    console.error("Frontend Upload Error:", errorText);
+                    
+                    // Wenn Fehler 413 (zu groß) oder 400
+                    return fail(imageResponse.status, { 
+                        error: `Upload Failed: ${imageResponse.statusText}. Please try smaller images.` 
+                    });
                 }
             } catch (error) {
-                // FIX: catch Block hinzugefügt
                 console.error("Frontend Fetch Error during upload:", error);
+                return fail(500, { error: 'Connection error during upload' });
             }
         }
 
-        // FIX: Return am Ende der Funktion, damit es immer ausgeführt wird
-        return { success: true, newSpotId };
+        return { success: true };
     },
 
     delete: async ({ request, locals }) => {
@@ -126,7 +126,7 @@ export const actions: Actions = {
 
     deleteImage: async ({ request, locals }) => {
         const token = locals.user?.token;
-        if (!token) return fail(401);
+        if (!token) return fail(401, { error: 'Unauthorized' });
 
         const data = await request.formData();
         const spotId = data.get('spotId');
@@ -134,13 +134,20 @@ export const actions: Actions = {
 
         if (!spotId || !imageId) return fail(400, { error: 'Missing IDs' });
 
-        const safeImageId = encodeURIComponent(imageId.toString());
-        const res = await fetch(`${API_BASE_URL}/api/localspots/${spotId}/image?imageId=${safeImageId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        try {
+            const safeImageId = encodeURIComponent(imageId.toString());
+            const res = await fetch(`${API_BASE_URL}/api/localspots/${spotId}/image?imageId=${safeImageId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
-        if (!res.ok) return fail(res.status, { error: 'Failed to delete image' });
-        return { success: true };
+            if (!res.ok) {
+                return fail(res.status, { error: 'Failed to delete image on server' });
+            }
+            return { success: true };
+        } catch (error) {
+            console.error("Delete Image Error:", error);
+            return fail(500, { error: 'Connection error' });
+        }
     }
 };

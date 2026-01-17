@@ -1,14 +1,20 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { userState } from "$lib/runes.svelte";
-  import type { PageData } from './$types';
+  import type { PageData, ActionData } from './$types'; // ActionData importieren
   import ImageGallery from '$lib/components/ImageGallery.svelte';
 
-  let { data }: { data: PageData } = $props();
+  let { data, form }: { data: PageData, form: ActionData } = $props();
+
+  // Fehlermeldung State
+  let errorMessage = $state<string | null>(null);
 
   $effect(() => {
       if (data.spots) userState.spots = data.spots;
       if (data.categories) userState.categories = data.categories;
+      // Wenn vom Server ein Fehler kommt (via fail())
+      if (form?.error) errorMessage = form.error;
+      else if (form?.success) errorMessage = null;
   });
 
   // UI State
@@ -16,18 +22,25 @@
   let fileList = $state<FileList | null>(null);
   let isDragging = $state(false);
 
-  // Sync Input Files Helper
-  function updateInputFiles(files: File[]) {
-      const dt = new DataTransfer();
-      files.forEach(file => dt.items.add(file));
-      fileList = dt.files;
-      const inputEl = document.getElementById('images') as HTMLInputElement;
-      if (inputEl) inputEl.files = fileList;
-  }
+  // Maximale Größe pro Datei (z.B. 10MB)
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; 
 
   function handleFileChange(e: Event) {
       const target = e.target as HTMLInputElement;
+      errorMessage = null; // Reset error
+
       if (target.files) {
+          // 1. Größe prüfen
+          for (const file of target.files) {
+              if (file.size > MAX_FILE_SIZE) {
+                  errorMessage = `File "${file.name}" is too large (max 10MB).`;
+                  target.value = ''; // Input leeren
+                  imagePreviewUrls = [];
+                  fileList = null;
+                  return;
+              }
+          }
+
           fileList = target.files;
           imagePreviewUrls = Array.from(target.files).map(file => URL.createObjectURL(file));
       }
@@ -35,27 +48,29 @@
 
   function removeFile(index: number) {
       if (!fileList) return;
+      const dt = new DataTransfer();
       const filesArray = Array.from(fileList);
       filesArray.splice(index, 1);
-      updateInputFiles(filesArray);
+      filesArray.forEach(file => dt.items.add(file));
+      
+      fileList = dt.files;
+      const inputEl = document.getElementById('images') as HTMLInputElement;
+      if (inputEl) inputEl.files = fileList;
+      
       imagePreviewUrls = filesArray.map(file => URL.createObjectURL(file));
   }
 </script>
 
-<svelte:head>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
-</svelte:head>
+{#if errorMessage}
+    <div class="notification is-danger is-light mb-4">
+        <button class="delete" onclick={() => errorMessage = null}></button>
+        {errorMessage}
+    </div>
+{/if}
 
 <section class="section app-background bg-cream">
   <div class="container">
-    
-    <div class="mb-6 has-text-centered">
-        <h1 class="title is-1 font-serif text-espresso">Travel Journal</h1>
-        <p class="subtitle is-6 text-latte font-sans tracking-wide">CAPTURE YOUR HIDDEN GEMS</p>
-    </div>
-
     <div class="columns is-variable is-8">
-      
       <div class="column is-4">
         <div class="sticky-container">
             <div class="glass-panel p-5">
@@ -67,53 +82,20 @@
                 enctype="multipart/form-data" 
                 use:enhance={() => {
                     return async ({ update, result }) => {
+                        // Wenn der Server "Error" (400/413/500) meldet
+                        if (result.type === 'failure') {
+                             // SvelteKit updated 'form' prop automatisch,
+                             // unser $effect oben übernimmt das Setzen von errorMessage
+                        }
                         if (result.type === 'success') {
                             imagePreviewUrls = []; 
                             fileList = null;
+                            errorMessage = null;
                         }
                         await update();
                     };
                 }}
             >
-                <div class="field mb-4">
-                    <label class="label text-muted text-xs uppercase" for="title">Name</label>
-                    <div class="control">
-                        <input id="title" name="title" class="input modern-input" type="text" placeholder="Spot Name" required />
-                    </div>
-                </div>
-
-                <div class="field mb-4">
-                    <label class="label text-muted text-xs uppercase" for="category">Category</label>
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select id="category" name="category" class="modern-input" required>
-                                <option value="" disabled selected>Select...</option>
-                                {#each userState.categories as cat}
-                                <option value={cat._id}>{cat.name}</option>
-                                {/each}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field mb-4">
-                    <label class="label text-muted text-xs uppercase" for="description">Description</label>
-                    <div class="control">
-                        <textarea id="description" name="description" class="textarea modern-input" rows="2"></textarea>
-                    </div>
-                </div>
-
-                <div class="field is-grouped mb-4">
-                    <div class="control is-expanded">
-                        <label class="label text-muted text-xs uppercase" for="latitude">Lat</label>
-                        <input id="latitude" name="latitude" class="input modern-input text-xs" type="text" value="48.137154">
-                    </div>
-                    <div class="control is-expanded">
-                        <label class="label text-muted text-xs uppercase" for="longitude">Long</label>
-                        <input id="longitude" name="longitude" class="input modern-input text-xs" type="text" value="11.576124">
-                    </div>
-                </div>
-
                 <div class="field mb-6">
                     <label class="label text-muted text-xs uppercase mb-2" for="images">Gallery</label>
                     
@@ -130,78 +112,16 @@
                             ondragleave={() => isDragging = false}
                             ondrop={() => isDragging = false}
                         >
-                        
-                        {#if imagePreviewUrls.length > 0}
-                            <div class="preview-grid">
-                                {#each imagePreviewUrls as url, i}
-                                    <div class="preview-item-wrapper">
-                                        <div class="preview-item" style="background-image: url({url})"></div>
-                                        
-                                        <button 
-                                            type="button" 
-                                            class="preview-delete-btn"
-                                            onclick={(e) => {
-                                                e.preventDefault(); 
-                                                removeFile(i);
-                                            }}
-                                            aria-label="Remove image"
-                                        >
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                {/each}
-                            </div>
-                            <p class="text-xs text-center mt-2 text-success">
-                                {imagePreviewUrls.length} images selected
-                            </p>
-                        {:else}
-                            <div class="upload-placeholder">
-                                <span class="icon is-large text-latte mb-2"><i class="fas fa-cloud-upload-alt fa-2x"></i></span>
-                                <p class="is-size-7 has-text-grey">Click to upload</p>
-                            </div>
-                        {/if}
-                    </div>
-                </div>
+                         </div>
+                 </div>
 
-                <button class="button is-fullwidth btn-espresso shadow-hover">Create Entry</button>
+                 <button class="button is-fullwidth btn-espresso shadow-hover">Create Entry</button>
             </form>
             </div>
         </div>
       </div>
 
-      <div class="column is-8">
-        <div class="spot-grid">
-            {#each userState.spots as spot (spot._id)}
-                <div class="spot-card">
-                    <div class="spot-gallery">
-                        <ImageGallery 
-                            images={(spot.images && spot.images.length > 0) ? spot.images : (spot.img ? [spot.img] : [])} 
-                            spotId={spot._id}
-                        />
-                        <span class="category-badge">
-                            {typeof spot.category === 'object' ? spot.category?.name : 'Spot'}
-                        </span>
-                    </div>
-                    
-                    <div class="spot-content p-4">
-                        <h3 class="title is-5 font-serif text-espresso mb-2">{spot.title}</h3>
-                        <div class="level is-mobile mt-auto">
-                            <div class="level-left"></div>
-                            <div class="level-right">
-                                <form method="POST" action="?/delete" use:enhance>
-                                    <input type="hidden" name="id" value={spot._id}>
-                                    <button class="delete-icon-btn" title="Delete Spot">
-                                        <i class="far fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {/each}
-        </div>
       </div>
-    </div>
   </div>
 </section>
 

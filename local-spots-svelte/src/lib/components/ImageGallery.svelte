@@ -14,7 +14,7 @@
 
   let selectedIndex = $state(0);
 
-  // Helper: URL extrahieren (Robust)
+  // Helper: URL extrahieren
   function getUrl(img: any): string {
       if (!img) return '';
       if (typeof img === 'string') return img;
@@ -74,11 +74,7 @@
                         onclick={() => selectedIndex = i}
                         aria-label="View image {i + 1}"
                     >
-                        <img 
-                            src={getUrl(img)} 
-                            alt="Thumb" 
-                            class="thumbnail-img"
-                        />
+                        <img src={getUrl(img)} alt="Thumb" class="thumbnail-img" />
                     </button>
                 {/each}
             </div>
@@ -102,16 +98,18 @@
     }
     .hero-image { width: 100%; height: 100%; object-fit: cover; }
     
-    .hero-delete-form { position: absolute; top: 10px; right: 10px; z-index: 10; }
+    /* FIX: Position auf LEFT geändert */
+    .hero-delete-form { position: absolute; top: 10px; left: 10px; z-index: 10; }
+    
     .delete-btn { 
         border-radius: 50%; height: 36px; width: 36px; padding: 0; 
         border: 2px solid white; cursor: pointer; transition: all 0.2s; opacity: 0.8;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
     .delete-btn:hover { transform: scale(1.1); opacity: 1; background-color: #ff3860 !important; color: white !important; }
 
     .thumbnails-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: thin; }
     
-    /* FIX: Button Reset Styles für Thumbnails */
     .thumbnail-btn {
         width: 60px; height: 60px; padding: 0; border: 2px solid transparent; 
         background: none; border-radius: 8px; cursor: pointer; overflow: hidden; 
